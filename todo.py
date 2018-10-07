@@ -4,7 +4,7 @@ from config import config
 _config = config()
 
 
-def evaluate(golden_list, predict_list):
+def evaluate( golden_list, predict_list):
     pass;
 
 
