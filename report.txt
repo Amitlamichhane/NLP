@@ -1,0 +1,15 @@
+How do you implement evaluate()?
+Exhaustive pattern matching was the way to go.
+
+
+How does Modification 1 (i.e., storing model with best performance on the development set) affect the performance?
+(what happens after putting config1)
+
+How do you implement new_LSTMCell()?
+How does Modification 2 (i.e., re-implemented LSTM cell) affect the performance?
+
+
+
+
+How do you implement get_char_sequence()?
+How does Modification 3 (i.e., adding Char BiLSTM layer) affect the performance?

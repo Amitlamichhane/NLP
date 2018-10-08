@@ -9,17 +9,86 @@ _config = config()
 def evaluate( golden_list, predict_list):
     false_positive = false_negative =true_positive =0
     precision = recall =0
-    border_flag =0
+    border_flag_hyp =0
+    border_flag_tar =0
     f1_score = 0
+    predict_flag_hyp = 0
+    predict_flag_tar =0
 
     for i in range(len(golden_list)):
         for j in range(len(golden_list[i])):
-            #three condition to check if golden_list is 'O'
-            if(golden_list[i][j]=='O'):
+            #needs to check exhaustively
+            #patter matching
+            golden = golden_list[i][j]
+            pattern = predict_list[i][j]
+            if border_flag_hyp:
+                pass
+            elif border_flag_tar:
+                #if both we bb-TAR
+                if predict_flag_tar:
+                    # doesnt matter if both match
+                    if golden == pattern:
+                        true_positive = true_positive +1
+                    else:
+                        false_positive = false_positive + 1
+                        false_negative = false_negative +1
+                    predict_flag_tar = 0
+                else:
+                    if pattern == 'B-HYP':
+                        predict_flag_hyp = 1
+                    elif pattern == "B-TAR":
+                        predict_flag_tar =1
+                    false_negative = false_negative + 1
+
+                border_flag_tar = 0
+            elif predict_flag_hyp:
+                pass
+            elif predict_flag_tar:
+                #need to check if the next one is ITAR
+
+                if golden == "B-TAR":
+                    border_flag_tar = 1
+
+                elif golden == "B-HYP":
+                    border_flag_hyp = 1
+                 #other cases doesn't matter
+                false_positive = false_positive + 1
+                predict_flag_tar= 0
+
+            else:
+                if(golden_list[i][j]=="B-TAR"):
+                    border_flag_tar = 1
+
+                    if (pattern == 'O'):
+                        false_negative = false_negative +1
+                    elif(pattern =="B-TAR"):
+                        #still can't be true until we check the next pattern
+                        predict_flag_tar = 1
+                    elif(pattern == "B-HYP"):
+                        #since marked wrong
+                        #since marked as positive
+                        false_negative = false_negative +1
+                        false_positive = false_positive +1
+                        predict_flag_hyp = 1
 
 
+                elif(golden_list[i][j]=="B-HYP"):
+                    pass
+                else:
+                    if(predict_list[i][j]!='O'):
 
+                        if (predict_list[i][j]=="B-HYP"):
+                            predict_flag_hyp=1
+                        elif(predict_list[i][j]=="B-TAR"):
+                            predict_flag_tar = 1
+
+    #end of the thing resolves around what tag we still have
+    #if the tags are flagged and both tags are same then we say positive
+    #other wise negative depending on the tag
     try:
+        print("true_positive=>" +  "  "+  str(true_positive))
+        print("false_negative=>"+  " " + str(false_negative))
+        print("false positive=>" +  " " +str(false_positive))
         precision = true_positive/(true_positive+false_positive)
         recall = true_positive/(true_positive+false_negative)
         f1_score = (2* precision *recall)/(precision+recall)
