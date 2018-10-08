@@ -1,7 +1,11 @@
+
+from __future__ import division
 import traceback
 
 import torch
 from config import config
+
+
 
 _config = config()
 
@@ -104,7 +108,7 @@ def evaluate( golden_list, predict_list):
 
 
                 elif(golden_list[i][j]=="B-HYP"):
-                    print("hello")
+                    #print("hello")
                     if (pattern == 'O'):
                         false_negative = false_negative +1
                     elif(pattern =="B-TAR"):
@@ -147,8 +151,10 @@ def evaluate( golden_list, predict_list):
         print("true_positive=>" +  "  "+  str(true_positive))
         print("false_negative=>"+  " " + str(false_negative))
         print("false positive=>" +  " " +str(false_positive))
-        precision = true_positive/(true_positive+false_positive)
+        precision = float (true_positive/(true_positive+false_positive))
+        print("precision is ===>" + " " + str(precision))
         recall = true_positive/(true_positive+false_negative)
+        print("recall is ===>" + " " + str(recall))
         f1_score = (2* precision *recall)/(precision+recall)
     except Exception:
         traceback.print_exc()
