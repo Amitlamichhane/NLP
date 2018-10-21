@@ -163,17 +163,8 @@ def evaluate( golden_list, predict_list):
     return round(f1_score,3)
 
 
-
-
-
-
-
-
-
-
-
-
-
+#todo read lstm execution
+#todo finish the lecture videos
 
 def new_LSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None):
     pass;
