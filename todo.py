@@ -150,6 +150,14 @@ def evaluate( golden_list, predict_list):
        #print("true_positive=>" +  "  "+  str(true_positive))
        #print("false_negative=>"+  " " + str(false_negative))
        #print("false positive=>" +  " " +str(false_positive))
+
+       #if fp = 0 and fn = 0, then f1 = 1
+
+       #elif tp = 0, then f1 = 0
+        if false_negative ==0 and false_positive ==0:
+            return 1.0
+        elif true_positive ==0:
+            return 0.0
         precision = float (true_positive/(true_positive+false_positive))
        #print("precision is ===>" + " " + str(precision))
         recall = true_positive/(true_positive+false_negative)

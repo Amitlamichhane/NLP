@@ -43,6 +43,13 @@ class sequence_labeling(nn.Module):
 
     def _rnn(self, batch_word_index_lists, batch_sentence_len_list, batch_char_index_matrices, batch_word_len_lists):
         input_word_embeds = self.word_embeds(batch_word_index_lists)
+        #print("input_word_embeds shape")
+        #print(input_word_embeds.shape)
+        #print("batch_char_index_matrices")
+        #print(batch_char_index_matrices.shape)
+        #print("batch_word_len_lists")
+        #print(batch_sentence_len_list.shape)
+
 
         # employ char embedding if the flag is True
         if self.config.use_char_embedding:
@@ -50,6 +57,9 @@ class sequence_labeling(nn.Module):
             input_embeds = self.non_recurrent_dropout(torch.cat([input_word_embeds, output_char_sequence], dim=-1))
         else:
             input_embeds = self.non_recurrent_dropout(input_word_embeds)
+            #print("Printing shape of words")
+            #print(input_embeds.shape)
+
 
         perm_idx, sorted_batch_sentence_len_list = self.sort_input(batch_sentence_len_list)
         sorted_input_embeds = input_embeds[perm_idx]
