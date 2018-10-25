@@ -2,9 +2,8 @@
 from __future__ import division
 import traceback
 
-import torch
 from config import config
-
+import torch.nn.functional as F
 
 
 _config = config()
@@ -148,13 +147,13 @@ def evaluate( golden_list, predict_list):
     #if the tags are flagged and both tags are same then we say positive
     #other wise negative depending on the tag
     try:
-        print("true_positive=>" +  "  "+  str(true_positive))
-        print("false_negative=>"+  " " + str(false_negative))
-        print("false positive=>" +  " " +str(false_positive))
+       #print("true_positive=>" +  "  "+  str(true_positive))
+       #print("false_negative=>"+  " " + str(false_negative))
+       #print("false positive=>" +  " " +str(false_positive))
         precision = float (true_positive/(true_positive+false_positive))
-        print("precision is ===>" + " " + str(precision))
+       #print("precision is ===>" + " " + str(precision))
         recall = true_positive/(true_positive+false_negative)
-        print("recall is ===>" + " " + str(recall))
+       #print("recall is ===>" + " " + str(recall))
         f1_score = (2* precision *recall)/(precision+recall)
     except Exception:
         traceback.print_exc()
@@ -167,7 +166,33 @@ def evaluate( golden_list, predict_list):
 #todo finish the lecture videos
 
 def new_LSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None):
-    pass;
+
+    #if input.is_cuda:
+    #    igates = F.linear(input, w_ih)
+    #    hgates = F.linear(hidden[0], w_hh)
+    #    state = fusedBackend.LSTMFused()
+    #    return state(igates, hgates, hidden[1]) if b_ih is None else state(igates, hgates, hidden[1], b_ih, b_hh)
+
+    hx, cx = hidden
+    gates = F.linear(input, w_ih, b_ih) + F.linear(hx, w_hh, b_hh)
+    ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
+
+    #we need to change this line to change the import stuff
+    #changin ingate to 1 - forgetgate
+
+    forgetgate = F.sigmoid(forgetgate)
+    ingate = 1- forgetgate
+    cellgate = F.tanh(cellgate)
+    outgate = F.sigmoid(outgate)
+
+    cy = (forgetgate * cx) + (ingate * cellgate)
+    hy = outgate * F.tanh(cy)
+
+    return hy, cy
+
+
+
+
 
 
 def get_char_sequence(model, bclearatch_char_index_matrices, batch_word_len_lists):
