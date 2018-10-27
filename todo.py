@@ -9,165 +9,89 @@ import torch.nn.functional as F
 _config = config()
 
 
-def evaluate( golden_list, predict_list):
-    false_positive = false_negative =true_positive =0
-    precision = recall =0
-    border_flag_hyp =0
-    border_flag_tar =0
-    f1_score = 0
-    predict_flag_hyp = 0
-    predict_flag_tar =0
+def find_tokens(token):
+    if token == "B-TAR":
+        return "I-TAR"
+    else:
+        return "I-HYP"
 
+def extract_tokens(a):
+    #use set instead of list to get the intersection
+
+    token_position = set()
+    #token =""
+    #to_find= ""
+    start =0
+
+    while start < len(a):
+        #if it finds the starting position
+        if a[start].startswith('B'):
+            token = a[start]
+
+            #now we need to find the end of the tokens
+            end = start +1
+            to_find = find_tokens(token)
+            #print(to_find)
+            while end < len(a):
+                #check until it is 'O'
+                #update check until it is to_find
+                #since it might have I-HYP instead of I-TAR
+                #when looking at B-TAR
+                if a[end] != to_find:
+                    #we get out of the loop
+                    break
+                end = end + 1
+            #update set
+            token_position.add((token,start,end))
+            start = end -1
+            #update l
+        start = start + 1
+    return token_position
+#we iterate through each file trying to find the same token we check the first group with other
+#
+
+def evaluate(golden_list, predict_list):
+
+    false_positive= false_negative = true_positive= 0
     for i in range(len(golden_list)):
-        for j in range(len(golden_list[i])):
-            #needs to check exhaustively
-            #patter matching
-            golden = golden_list[i][j]
-            pattern = predict_list[i][j]
-            if border_flag_hyp:
-                if predict_flag_hyp:
-                    # doesnt matter if both match
-                    if golden == pattern:
-                        true_positive = true_positive +1
-                    else:
-                        false_positive = false_positive + 1
-                        false_negative = false_negative +1
-                    predict_flag_hyp = 0
-                else:
-                    if pattern == 'B-HYP':
-                        predict_flag_hyp = 1
-                    elif pattern == "B-TAR":
-                        predict_flag_tar =1
-                    false_negative = false_negative + 1
 
-                border_flag_hyp= 0
-
-            elif border_flag_tar:
-                #if both we bb-TAR
-                if predict_flag_tar:
-                    # doesnt matter if both match
-                    if golden == pattern:
-                        true_positive = true_positive +1
-                    else:
-                        false_positive = false_positive + 1
-                        false_negative = false_negative +1
-                    predict_flag_tar = 0
-                else:
-                    if pattern == 'B-HYP':
-                        predict_flag_hyp = 1
-                    elif pattern == "B-TAR":
-                        predict_flag_tar =1
-                    false_negative = false_negative + 1
-
-                border_flag_tar = 0
-            elif predict_flag_hyp:
-                if golden == "B-TAR":
-                    border_flag_tar = 1
-
-                elif golden == "B-HYP":
-
-                    border_flag_hyp = 1
-                    if golden == pattern:
-                        true_positive = true_positive + true_positive
-                    else:
-                        if j == len(golden_list[i]) - 1:
-                            false_negative = false_negative + 1
-                 #other cases doesn't matter
-                false_positive = false_positive + 1
-
-                predict_flag_hyp= 0
-
-            elif predict_flag_tar:
-                #need to check if the next one is ITAR
-
-                if golden == "B-TAR":
-                    border_flag_tar = 1
-
-                elif golden == "B-HYP":
-                    border_flag_hyp = 1
-                 #other cases doesn't matter
-                false_positive = false_positive + 1
-                predict_flag_tar= 0
-
-            else:
-                if(golden_list[i][j]=="B-TAR"):
-                    border_flag_tar = 1
-
-                    if (pattern == 'O'):
-                        false_negative = false_negative +1
-                    elif(pattern =="B-TAR"):
-                        #still can't be true until we check the next pattern
-                        predict_flag_tar = 1
-                    elif(pattern == "B-HYP"):
-                        #since marked wrong
-                        #since marked as positive
-                        false_negative = false_negative +1
-                        false_positive = false_positive +1
-                        predict_flag_hyp = 1
+        golden_tokens = extract_tokens(golden_list[i])
+        #print("golden tokens is")
+        #print(golden_tokens
 
 
-                elif(golden_list[i][j]=="B-HYP"):
-                    #print("hello")
-                    if (pattern == 'O'):
-                        false_negative = false_negative +1
-                    elif(pattern =="B-TAR"):
-                        #still can't be true until we check the next pattern
-                        false_negative = false_negative + 1
-                        false_positive = false_positive + 1
-                        predict_flag_tar = 1
-                    elif(pattern == "B-HYP"):
-                        #since marked wrong
-                        #since marked as positive
-                        #final check if it end of the sentence
-                        if j == len(golden_list[i])-1:
-                            true_positive = true_positive + 1
-                        else:
-                            predict_flag_hyp = 1
-                    elif (pattern == "I-HYP"):
-                        # since marked wrongel
-                        # since marked as positive
-                        # final check if it end of the sentence
-                        if j == len(golden_list[i]) - 1:
-                            false_negative = false_negative+ 1
+        predict_tokens = extract_tokens(predict_list[i])
+
+        inersection = len(predict_tokens.intersection(golden_tokens))
+
+        true_positive  = true_positive + inersection
+        false_positive += len(predict_tokens)- inersection
+        false_negative += len(golden_tokens)-inersection
 
 
-                else:
-                    if(predict_list[i][j]!='O'):
 
-                        if (predict_list[i][j]=="B-HYP"):
-                            if j == len(golden_list[i]) - 1:
-                                false_positive = false_positive + 1
-                            else:
-                                predict_flag_hyp = 1
+    if false_negative == 0 and false_positive == 0:
+        return 1.00
+    elif true_positive == 0 and (false_positive > 0 or false_negative >0):
+        return 0.00
+    else:
+        #calculate recal and precision
+        try:
+            print("True positive is ---->" + " " + str(true_positive))
+            print("False positive is ---->" + " " + str(false_positive))
+            print("False negative is ---->" + " " + str(false_negative))
+            precision = float(true_positive / (true_positive + false_positive))
+            #print("precision is ===>" + " " + str(precision))
+            recall = true_positive / (true_positive + false_negative)
+            # print("recall is ===>" + " " + str(recall))
+            f1_score = (2 * precision * recall) / (precision + recall)
+        except Exception:
+            traceback.print_exc()
 
-                        elif(predict_list[i][j]=="B-TAR"):
-                            predict_flag_tar = 1
-
-    #end of the thing resolves around what tag we still have
-    #if the tags are flagged and both tags are same then we say positive
-    #other wise negative depending on the tag
-    try:
-       #print("true_positive=>" +  "  "+  str(true_positive))
-       #print("false_negative=>"+  " " + str(false_negative))
-       #print("false positive=>" +  " " +str(false_positive))
-
-       #if fp = 0 and fn = 0, then f1 = 1
-
-       #elif tp = 0, then f1 = 0
-        if false_negative ==0 and false_positive ==0:
-            return 1.0
-        elif true_positive ==0:
-            return 0.0
-        precision = float (true_positive/(true_positive+false_positive))
-       #print("precision is ===>" + " " + str(precision))
-        recall = true_positive/(true_positive+false_negative)
-       #print("recall is ===>" + " " + str(recall))
-        f1_score = (2* precision *recall)/(precision+recall)
-    except Exception:
-        traceback.print_exc()
-
-
+    #dont round
     return round(f1_score,3)
+
+
 
 
 #todo read lstm execution
