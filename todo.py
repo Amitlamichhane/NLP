@@ -2,8 +2,12 @@
 from __future__ import division
 import traceback
 
-from config import config
+from torch.nn.utils.rnn import pack_padded_sequence
+
 import torch.nn.functional as F
+import torch
+from config import config
+
 
 
 _config = config()
@@ -18,7 +22,7 @@ def find_tokens(token):
 def extract_tokens(a):
     #use set instead of list to get the intersection
 
-    token_position = set()
+    token_position = set( )
     #token =""
     #to_find= ""
     start =0
@@ -127,6 +131,57 @@ def new_LSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None):
 
 
 
-def get_char_sequence(model, bclearatch_char_index_matrices, batch_word_len_lists):
-    pass;
+def get_char_sequence(model, batch_char_index_matrices, batch_word_len_lists):
+    # resize batch_char_index_matrices
+    sizes_batch = batch_char_index_matrices.size()
+    mini_batch = batch_char_index_matrices.view(sizes_batch[0] * sizes_batch[1], -1)
+
+    # get char_embeddings [14,14,50]
+    input_char_embeds = model.char_embeds(mini_batch)
+
+    # sort mini-batch
+    sizes_len = batch_word_len_lists.size()
+    mini_len = batch_word_len_lists.view(sizes_len[0] * sizes_len[1])
+    perm_idx, sorted_mini_len = model.sort_input(mini_len)
+    sorted_input_char_embeds = input_char_embeds[perm_idx]
+    _, desorted_indices = torch.sort(perm_idx, descending=False)
+    output_sequence = pack_padded_sequence(sorted_input_char_embeds, lengths=sorted_mini_len.data.tolist(),
+                                           batch_first=True)
+
+    # feed pack_padded sequence to char_lstm layer
+    output_sequence, state = model.char_lstm(output_sequence)
+
+    # (num_layers*num_directions), batch_size, hidden_size
+    # currently ordered DECREASINGLY
+    # re-order hidden_states to correspond with original order. ([2,14,50])
+    hidden_recover = state[0]
+    for i in range(hidden_recover.size()[0]):
+        hidden_recover[i] = hidden_recover[i][desorted_indices]
+
+    batch_size = sizes_batch[0] * sizes_batch[1]
+    _, rev_indicies = torch.sort(torch.tensor([i for i in range(batch_size)]), descending=True)
+    hidden_recover[1] = hidden_recover[1][rev_indicies]
+
+    # we have
+    # FBFBFBFBFB
+    # we want
+    # FFFFFFBBBBBB
+    clone = hidden_recover.clone()
+    # [2,14,50]
+
+    fr = 0
+    bc = batch_size - 1
+    tg = 0
+    for i in range(2):
+        for j in range(batch_size):
+            if tg == 0:
+                clone[i][j] = hidden_recover[0][fr]
+                fr += 1
+            else:
+                clone[i][j] = hidden_recover[1][bc]
+                bc -= 1
+            tg = (tg + 1) % 2
+
+    return clone.view(sizes_batch[0], sizes_batch[1], -1)
+
 
